@@ -2,12 +2,16 @@ import bpy
 import os
 import json
 
-out_dir = r'D:\ai\my-llm-test\gemini-3.8-flash\yellowPlanet\assets\models'
+out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'models')
 os.makedirs(out_dir, exist_ok=True)
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 1. Export astronaut
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=r'D:\ai\my-llm-test\gemini-3.8-flash\astronaut.glb')
+astro_path = os.path.join(root_dir, 'astronaut.glb')
+if not os.path.exists(astro_path):
+    astro_path = 'astronaut.glb'
+bpy.ops.import_scene.gltf(filepath=astro_path)
 astro_obj = [o for o in bpy.data.objects if o.name == 'astronaut'][0]
 bpy.ops.object.select_all(action='DESELECT')
 astro_obj.select_set(True)
@@ -17,7 +21,10 @@ print('Exported astronaut.obj')
 
 # 2. Process planet
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.gltf(filepath=r'D:\ai\my-llm-test\gemini-3.8-flash\planet.glb')
+planet_path = os.path.join(root_dir, 'planet.glb')
+if not os.path.exists(planet_path):
+    planet_path = 'planet.glb'
+bpy.ops.import_scene.gltf(filepath=planet_path)
 
 scene_data = {
     'start': None,

@@ -54,7 +54,10 @@ flowchart TD
 
 ## 三、编译与运行指南
 
-进入项目根目录：`D:\ai\my-llm-test\gemini-3.8-flash\yellowPlanet`
+进入项目根目录：
+```bash
+cd yellowPlanet
+```
 
 ### 1. HTML5 网页端运行（推荐，支持随时体验）
 ```bash
@@ -66,23 +69,25 @@ lime build html5
 ```
 编译产物位于 `Export/html5/bin/` 目录，可在任何静态 Web 服务器或浏览器中打开 `index.html`。
 
-### 2. Windows 桌面原生端运行 (HashLink)
+### 2. Windows 桌面原生端运行 (HashLink / Neko)
 ```bash
+lime test neko
+# 或使用 HashLink:
 lime test hl
 ```
 或者只编译独立 EXE：
 ```bash
 lime build hl
 ```
-编译产物位于 `Export/hl/bin/` 目录，可直接双击运行 [`YellowPlanet.exe`](file:///D:/ai/my-llm-test/gemini-3.8-flash/yellowPlanet/Export/hl/bin/YellowPlanet.exe)。
+编译产物位于 `Export/hl/bin/` 目录，可直接双击运行 `YellowPlanet.exe`。
 
 ---
 
 ## 四、工程源码结构
 
-- [`project.xml`](file:///D:/ai/my-llm-test/gemini-3.8-flash/yellowPlanet/project.xml)：OpenFL 工程配置文件，配置 Stage3D 深度缓冲、反锯齿与 Away3D 依赖。
-- [`src/Main.hx`](file:///D:/ai/my-llm-test/gemini-3.8-flash/yellowPlanet/src/Main.hx)：核心游戏主类，包含场景初始化、Away3D 光影配置、球面物理运动学、碰撞检测、相机跟踪与 HUD 渲染。
-- [`src/SimpleObjLoader.hx`](file:///D:/ai/my-llm-test/gemini-3.8-flash/yellowPlanet/src/SimpleObjLoader.hx)：自研的高性能零依赖 OBJ 几何解析器，支持顶点/UV/法线实时解构与 SubGeometry 重建。
+- [`project.xml`](project.xml)：OpenFL 工程配置文件，配置 Stage3D 深度缓冲、反锯齿与 Away3D 依赖。
+- [`src/Main.hx`](src/Main.hx)：核心游戏主类，包含场景初始化、Away3D 光影配置、球面物理运动学、碰撞检测、相机跟踪与 HUD 渲染。
+- [`src/SimpleObjLoader.hx`](src/SimpleObjLoader.hx)：自研的高性能零依赖 OBJ 几何解析器，支持顶点/UV/法线实时解构与 SubGeometry 重建。
 - `assets/models/`：
   - `planet_floor.obj`：星球地表三维网格模型。
   - `astronaut.obj`：宇航员主角三维模型。
