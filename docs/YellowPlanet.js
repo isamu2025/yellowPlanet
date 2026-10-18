@@ -913,7 +913,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "61";
+	app.meta.h["build"] = "2";
 	app.meta.h["company"] = "OpenFL Away3D";
 	app.meta.h["file"] = "YellowPlanet";
 	app.meta.h["name"] = "Yellow Planet 3D (Away3D)";
@@ -3528,6 +3528,7 @@ openfl_display_Sprite.prototype = $extend(openfl_display_DisplayObjectContainer.
 	,__properties__: $extend(openfl_display_DisplayObjectContainer.prototype.__properties__,{get_graphics:"get_graphics",set_buttonMode:"set_buttonMode",get_buttonMode:"get_buttonMode"})
 });
 var Main = function() {
+	this._activeTouches = new haxe_ds_IntMap();
 	this._powerParticleLife = [];
 	this._powerParticleVels = [];
 	this._powerBurstParticles = [];
@@ -3685,7 +3686,9 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 		this._fanMaterial = this.createTextureMaterial("assets/textures/Fan.JPG",5609949);
 		this._fanMaterial.set_bothSides(true);
 		this._astronautMaterial = this.createTextureMaterial("assets/textures/astronaut.jpg",14673387);
+		this._astronautMaterial.set_bothSides(true);
 		this._backpackMaterial = this.createTextureMaterial("assets/textures/equipment.png",4478310);
+		this._backpackMaterial.set_bothSides(true);
 		this._helmetMaterial = this.createTextureMaterial("assets/textures/glassy.png",41215);
 		this._helmetMaterial.set_blendMode(0);
 		this._helmetMaterial.set_bothSides(true);
@@ -3976,13 +3979,16 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 						this._suitFrames.push(fv);
 					}
 					this._suitSubGeom = new away3d_core_base_SubGeometry();
-					this._suitSubGeom.set_autoDeriveVertexNormals(false);
 					this._suitSubGeom.updateUVData(suitUVs);
 					this._suitSubGeom.updateIndexData(suitIndices);
 					this._suitSubGeom.updateVertexData(this._suitFrames[idleFrame]);
+					this._suitSubGeom.set_autoDeriveVertexNormals(true);
+					var suitNormals = this._suitSubGeom.get_vertexNormalData();
+					this._suitSubGeom.updateVertexNormalData(suitNormals);
 					var suitGeom = new away3d_core_base_Geometry();
 					suitGeom.addSubGeometry(this._suitSubGeom);
 					var suitMesh = new away3d_entities_Mesh(suitGeom,this._astronautMaterial);
+					suitMesh.set_bounds(new away3d_bounds_NullBounds(true));
 					this._astronautMesh.addChild(suitMesh);
 					var bpVertCount = ba.readUnsignedInt();
 					var bpUVs = openfl_Vector.toFloatVector(null,bpVertCount * 2,true);
@@ -4014,13 +4020,16 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 						this._backpackFrames.push(fv);
 					}
 					this._backpackSubGeom = new away3d_core_base_SubGeometry();
-					this._backpackSubGeom.set_autoDeriveVertexNormals(false);
 					this._backpackSubGeom.updateUVData(bpUVs);
 					this._backpackSubGeom.updateIndexData(bpIndices);
 					this._backpackSubGeom.updateVertexData(this._backpackFrames[idleFrame]);
+					this._backpackSubGeom.set_autoDeriveVertexNormals(true);
+					var bpNormals = this._backpackSubGeom.get_vertexNormalData();
+					this._backpackSubGeom.updateVertexNormalData(bpNormals);
 					var bpGeom = new away3d_core_base_Geometry();
 					bpGeom.addSubGeometry(this._backpackSubGeom);
 					var bpMesh = new away3d_entities_Mesh(bpGeom,this._backpackMaterial);
+					bpMesh.set_bounds(new away3d_bounds_NullBounds(true));
 					this._astronautMesh.addChild(bpMesh);
 					var helmetVertCount = ba.readUnsignedInt();
 					var helmetUVs = openfl_Vector.toFloatVector(null,helmetVertCount * 2,true);
@@ -4052,13 +4061,16 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 						this._helmetFrames.push(fv);
 					}
 					this._helmetSubGeom = new away3d_core_base_SubGeometry();
-					this._helmetSubGeom.set_autoDeriveVertexNormals(false);
 					this._helmetSubGeom.updateUVData(helmetUVs);
 					this._helmetSubGeom.updateIndexData(helmetIndices);
 					this._helmetSubGeom.updateVertexData(this._helmetFrames[idleFrame]);
+					this._helmetSubGeom.set_autoDeriveVertexNormals(true);
+					var helmetNormals = this._helmetSubGeom.get_vertexNormalData();
+					this._helmetSubGeom.updateVertexNormalData(helmetNormals);
 					var helmetGeom = new away3d_core_base_Geometry();
 					helmetGeom.addSubGeometry(this._helmetSubGeom);
 					var helmetMesh = new away3d_entities_Mesh(helmetGeom,this._helmetMaterial);
+					helmetMesh.set_bounds(new away3d_bounds_NullBounds(true));
 					this._astronautMesh.addChild(helmetMesh);
 					this._hasAnimatedAstronaut = true;
 					this._animFrame = idleFrame;
@@ -4066,7 +4078,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 			} catch( _g ) {
 				haxe_NativeStackTrace.lastError = _g;
 				var e = haxe_Exception.caught(_g).unwrap();
-				haxe_Log.trace("Error loading animated astronaut: " + Std.string(e),{ fileName : "src/Main.hx", lineNumber : 719, className : "Main", methodName : "loadAnimatedAstronaut"});
+				haxe_Log.trace("Error loading animated astronaut: " + Std.string(e),{ fileName : "src/Main.hx", lineNumber : 740, className : "Main", methodName : "loadAnimatedAstronaut"});
 			}
 		}
 		if(!this._hasAnimatedAstronaut) {
@@ -4077,9 +4089,18 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 				mats.h["Material_#27"] = this._backpackMaterial;
 				mats.h["head"] = this._helmetMaterial;
 				var multiMesh = SimpleObjLoader.parseMulti(astroText,mats,this._astronautMaterial);
+				var _g = 0;
+				var _g1 = multiMesh.get_numChildren();
+				while(_g < _g1) {
+					var i = _g++;
+					if(((multiMesh.getChildAt(i)) instanceof away3d_entities_Mesh)) {
+						(js_Boot.__cast(multiMesh.getChildAt(i) , away3d_entities_Mesh)).set_bounds(new away3d_bounds_NullBounds(true));
+					}
+				}
 				this._astronautMesh.addChild(multiMesh);
 			} else {
 				var cube = new away3d_entities_Mesh(new away3d_primitives_CubeGeometry(1.6,3.2,1.2),this._astronautMaterial);
+				cube.set_bounds(new away3d_bounds_NullBounds(true));
 				cube.set_y(1.6);
 				this._astronautMesh.addChild(cube);
 			}
@@ -4087,6 +4108,12 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 		this._astronautMesh.scale(4.5);
 		this._astronautMesh.set_y(0.0);
 		this._groundContainer.addChild(this._astronautMesh);
+		if(this._shadowMesh != null) {
+			this._shadowMesh.set_bounds(new away3d_bounds_NullBounds(true));
+		}
+		if(this._jetpackFlame != null) {
+			this._jetpackFlame.set_bounds(new away3d_bounds_NullBounds(true));
+		}
 	}
 	,setAstronautFrame: function(frame) {
 		if(!this._hasAnimatedAstronaut || frame == this._animFrame) {
@@ -4447,16 +4474,20 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 		mg.lineTo(-140,mh * 0.5 + 32);
 		mg.lineTo(-160,mh * 0.5 - 12);
 		mg.endFill();
-		var startFormat = new openfl_text_TextFormat("_sans",18,16758558,true,null,null,null,null,0);
+		var startFormat = new openfl_text_TextFormat("_sans",16,16758558,true,null,null,null,null,0);
 		var tfStart = new openfl_text_TextField();
 		tfStart.set_defaultTextFormat(startFormat);
-		tfStart.set_text("press spacebar to start");
+		tfStart.set_text("TAP SCREEN OR PRESS SPACE");
 		tfStart.set_x(-150);
-		tfStart.set_y(mh * 0.5 + 2);
+		tfStart.set_y(mh * 0.5 + 3);
 		tfStart.set_width(300);
 		tfStart.set_filters([shadow]);
 		tfStart.set_selectable(false);
 		this._instructionsModal.addChild(tfStart);
+		this._instructionsModal.set_buttonMode(true);
+		this._instructionsModal.addEventListener("click",function(e) {
+			_gthis.handleActionTrigger();
+		});
 		this._scoreModal = new openfl_display_Sprite();
 		this._hudLayer.addChild(this._scoreModal);
 		var sg = this._scoreModal.get_graphics();
@@ -4565,6 +4596,7 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 			_gthis.handleActionTrigger();
 		});
 		this._speedBanner.set_visible(false);
+		this.initTouchControls();
 	}
 	,showStageClearBanner: function() {
 		this._state = "stage_clear";
@@ -4616,12 +4648,154 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 			this._scoreModalValueText.set_text(Std.string(this._score));
 		}
 	}
+	,initTouchControls: function() {
+		var _gthis = this;
+		try {
+			openfl_ui_Multitouch.inputMode = 2;
+		} catch( _g ) {
+			haxe_NativeStackTrace.lastError = _g;
+		}
+		this._touchControlsLayer = new openfl_display_Sprite();
+		this.addChild(this._touchControlsLayer);
+		this._btnLeft = new openfl_display_Sprite();
+		this._btnLeft.mouseChildren = false;
+		this._btnLeft.set_buttonMode(true);
+		this.drawTouchButton(this._btnLeft,"◀",76,76,false,false);
+		this._touchControlsLayer.addChild(this._btnLeft);
+		this._btnRight = new openfl_display_Sprite();
+		this._btnRight.mouseChildren = false;
+		this._btnRight.set_buttonMode(true);
+		this.drawTouchButton(this._btnRight,"▶",76,76,false,false);
+		this._touchControlsLayer.addChild(this._btnRight);
+		this._btnJump = new openfl_display_Sprite();
+		this._btnJump.mouseChildren = false;
+		this._btnJump.set_buttonMode(true);
+		this.drawTouchButton(this._btnJump,"▲ JUMP",100,76,false,true);
+		this._touchControlsLayer.addChild(this._btnJump);
+		this._btnLeft.addEventListener("mouseDown",function(e) {
+			_gthis._leftPressed = true;
+			_gthis.drawTouchButton(_gthis._btnLeft,"◀",76,76,true,false);
+		});
+		this._btnLeft.addEventListener("mouseUp",function(e) {
+			_gthis._leftPressed = false;
+			_gthis.drawTouchButton(_gthis._btnLeft,"◀",76,76,false,false);
+		});
+		this._btnLeft.addEventListener("mouseOut",function(e) {
+			_gthis._leftPressed = false;
+			_gthis.drawTouchButton(_gthis._btnLeft,"◀",76,76,false,false);
+		});
+		this._btnLeft.addEventListener("touchBegin",function(e) {
+			_gthis._activeTouches.h[e.touchPointID] = "left";
+			_gthis._leftPressed = true;
+			_gthis.drawTouchButton(_gthis._btnLeft,"◀",76,76,true,false);
+		});
+		this._btnLeft.addEventListener("touchEnd",function(e) {
+			_gthis._activeTouches.remove(e.touchPointID);
+			_gthis.checkActiveTouchSteering();
+			_gthis.drawTouchButton(_gthis._btnLeft,"◀",76,76,false,false);
+		});
+		this._btnLeft.addEventListener("touchOut",function(e) {
+			_gthis._activeTouches.remove(e.touchPointID);
+			_gthis.checkActiveTouchSteering();
+			_gthis.drawTouchButton(_gthis._btnLeft,"◀",76,76,false,false);
+		});
+		this._btnRight.addEventListener("mouseDown",function(e) {
+			_gthis._rightPressed = true;
+			_gthis.drawTouchButton(_gthis._btnRight,"▶",76,76,true,false);
+		});
+		this._btnRight.addEventListener("mouseUp",function(e) {
+			_gthis._rightPressed = false;
+			_gthis.drawTouchButton(_gthis._btnRight,"▶",76,76,false,false);
+		});
+		this._btnRight.addEventListener("mouseOut",function(e) {
+			_gthis._rightPressed = false;
+			_gthis.drawTouchButton(_gthis._btnRight,"▶",76,76,false,false);
+		});
+		this._btnRight.addEventListener("touchBegin",function(e) {
+			_gthis._activeTouches.h[e.touchPointID] = "right";
+			_gthis._rightPressed = true;
+			_gthis.drawTouchButton(_gthis._btnRight,"▶",76,76,true,false);
+		});
+		this._btnRight.addEventListener("touchEnd",function(e) {
+			_gthis._activeTouches.remove(e.touchPointID);
+			_gthis.checkActiveTouchSteering();
+			_gthis.drawTouchButton(_gthis._btnRight,"▶",76,76,false,false);
+		});
+		this._btnRight.addEventListener("touchOut",function(e) {
+			_gthis._activeTouches.remove(e.touchPointID);
+			_gthis.checkActiveTouchSteering();
+			_gthis.drawTouchButton(_gthis._btnRight,"▶",76,76,false,false);
+		});
+		this._btnJump.addEventListener("mouseDown",function(e) {
+			_gthis.handleActionTrigger();
+			_gthis.drawTouchButton(_gthis._btnJump,"▲ JUMP",100,76,true,true);
+		});
+		this._btnJump.addEventListener("mouseUp",function(e) {
+			_gthis.drawTouchButton(_gthis._btnJump,"▲ JUMP",100,76,false,true);
+		});
+		this._btnJump.addEventListener("mouseOut",function(e) {
+			_gthis.drawTouchButton(_gthis._btnJump,"▲ JUMP",100,76,false,true);
+		});
+		this._btnJump.addEventListener("touchBegin",function(e) {
+			_gthis.handleActionTrigger();
+			_gthis.drawTouchButton(_gthis._btnJump,"▲ JUMP",100,76,true,true);
+		});
+		this._btnJump.addEventListener("touchEnd",function(e) {
+			_gthis.drawTouchButton(_gthis._btnJump,"▲ JUMP",100,76,false,true);
+		});
+	}
+	,checkActiveTouchSteering: function() {
+		var hasLeft = false;
+		var hasRight = false;
+		var id = this._activeTouches.keys();
+		while(id.hasNext()) {
+			var id1 = id.next();
+			if(this._activeTouches.h[id1] == "left") {
+				hasLeft = true;
+			}
+			if(this._activeTouches.h[id1] == "right") {
+				hasRight = true;
+			}
+		}
+		this._leftPressed = hasLeft;
+		this._rightPressed = hasRight;
+	}
+	,drawTouchButton: function(btn,label,w,h,isPressed,isJump) {
+		if(isJump == null) {
+			isJump = false;
+		}
+		var g = btn.get_graphics();
+		g.clear();
+		var bgColor = isJump ? isPressed ? 65416 : 670250 : isPressed ? 58879 : 599630;
+		var bgAlpha = isPressed ? 0.92 : 0.65;
+		var borderColor = isJump ? isPressed ? 16777215 : 3604224 : isPressed ? 16777215 : 58879;
+		var textColor = isPressed ? 0 : isJump ? 65416 : 16777215;
+		g.lineStyle(3,borderColor,0.95,true);
+		g.beginFill(bgColor,bgAlpha);
+		g.drawRoundRect(0,0,w,h,20,20);
+		g.endFill();
+		var tf = btn.getChildByName("label");
+		if(tf == null) {
+			tf = new openfl_text_TextField();
+			tf.set_name("label");
+			tf.set_selectable(false);
+			tf.mouseEnabled = false;
+			btn.addChild(tf);
+		}
+		var tfFormat = new openfl_text_TextFormat("_sans",isJump ? 17 : 24,textColor,true,null,null,null,null,0);
+		tf.set_defaultTextFormat(tfFormat);
+		tf.set_text(label);
+		tf.set_width(w);
+		tf.set_y(isJump ? (h - 24) * 0.5 : (h - 32) * 0.5);
+	}
 	,initEvents: function() {
 		this.addEventListener("enterFrame",$bind(this,this.onEnterFrame));
 		this.stage.addEventListener("keyDown",$bind(this,this.onKeyDown));
 		this.stage.addEventListener("keyUp",$bind(this,this.onKeyUp));
-		this.stage.addEventListener("mouseDown",$bind(this,this.onScreenTouch));
-		this.stage.addEventListener("touchBegin",$bind(this,this.onScreenTouch));
+		this.stage.addEventListener("mouseDown",$bind(this,this.onStagePointerDown));
+		this.stage.addEventListener("mouseUp",$bind(this,this.onStagePointerUp));
+		this.stage.addEventListener("touchBegin",$bind(this,this.onStagePointerDown));
+		this.stage.addEventListener("touchEnd",$bind(this,this.onStagePointerUp));
 		this.stage.addEventListener("resize",$bind(this,this.onResize));
 		this.onResize();
 	}
@@ -4755,8 +4929,46 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 			this._rightPressed = false;
 		}
 	}
-	,onScreenTouch: function(e) {
-		this.handleActionTrigger();
+	,onStagePointerDown: function(e) {
+		if(this._sndMusic != null && this._musicChannel == null) {
+			this.playMusic();
+		}
+		if(this._state == "start" || this._state == "die" || this._state == "stage_clear") {
+			this.handleActionTrigger();
+			return;
+		}
+		var sx = 0.0;
+		var sy = 0.0;
+		var touchId = 0;
+		if(Object.prototype.hasOwnProperty.call(e,"stageX")) {
+			sx = Reflect.field(e,"stageX");
+		}
+		if(Object.prototype.hasOwnProperty.call(e,"stageY")) {
+			sy = Reflect.field(e,"stageY");
+		}
+		if(Object.prototype.hasOwnProperty.call(e,"touchPointID")) {
+			touchId = Reflect.field(e,"touchPointID");
+		}
+		if(this.stage != null && sy > this.stage.stageHeight - 110) {
+			return;
+		}
+		if(this.stage != null) {
+			if(sx < this.stage.stageWidth * 0.42) {
+				this._activeTouches.h[touchId] = "left";
+				this._leftPressed = true;
+			} else if(sx > this.stage.stageWidth * 0.58) {
+				this._activeTouches.h[touchId] = "right";
+				this._rightPressed = true;
+			}
+		}
+	}
+	,onStagePointerUp: function(e) {
+		var touchId = 0;
+		if(Object.prototype.hasOwnProperty.call(e,"touchPointID")) {
+			touchId = Reflect.field(e,"touchPointID");
+		}
+		this._activeTouches.remove(touchId);
+		this.checkActiveTouchSteering();
 	}
 	,handleActionTrigger: function() {
 		if(this._sndMusic != null && this._musicChannel == null) {
@@ -5125,23 +5337,48 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 		}
 		this._view.set_width(this.stage.stageWidth);
 		this._view.set_height(this.stage.stageHeight);
+		if(((this._view.get_camera().get_lens()) instanceof away3d_cameras_lenses_PerspectiveLens)) {
+			var pLens = js_Boot.__cast(this._view.get_camera().get_lens() , away3d_cameras_lenses_PerspectiveLens);
+			if(this.stage.stageWidth < this.stage.stageHeight) {
+				var aspect = this.stage.stageWidth / this.stage.stageHeight;
+				pLens.set_fieldOfView(Math.min(80.0,65.0 / Math.max(0.68,Math.pow(aspect,0.5))));
+			} else {
+				pLens.set_fieldOfView(65.0);
+			}
+		}
 		if(this._energyPanel != null) {
 			this._energyPanel.set_x(this.stage.stageWidth - 175);
 			this._energyPanel.set_y(15);
 		}
+		var modalScale = Math.min(0.85,(this.stage.stageWidth - 16) / 460.0);
 		if(this._instructionsModal != null) {
 			this._instructionsModal.set_x(this.stage.stageWidth * 0.5);
 			this._instructionsModal.set_y(this.stage.stageHeight * 0.36);
-			this._instructionsModal.set_scaleX(0.85);
-			this._instructionsModal.set_scaleY(0.85);
+			this._instructionsModal.set_scaleX(modalScale);
+			this._instructionsModal.set_scaleY(modalScale);
 		}
 		if(this._scoreModal != null) {
 			this._scoreModal.set_x(this.stage.stageWidth * 0.5);
 			this._scoreModal.set_y(this.stage.stageHeight * 0.5);
+			var smScale = Math.min(1.0,(this.stage.stageWidth - 16) / 460.0);
+			this._scoreModal.set_scaleX(smScale);
+			this._scoreModal.set_scaleY(smScale);
 		}
 		if(this._speedBanner != null) {
 			this._speedBanner.set_x(this.stage.stageWidth * 0.5);
 			this._speedBanner.set_y(this.stage.stageHeight * 0.42);
+			var sbScale = Math.min(1.0,(this.stage.stageWidth - 16) / 460.0);
+			this._speedBanner.set_scaleX(sbScale);
+			this._speedBanner.set_scaleY(sbScale);
+		}
+		if(this._btnLeft != null && this._btnRight != null && this._btnJump != null) {
+			var btnY = this.stage.stageHeight - 96;
+			this._btnLeft.set_x(18);
+			this._btnLeft.set_y(btnY);
+			this._btnRight.set_x(104);
+			this._btnRight.set_y(btnY);
+			this._btnJump.set_x(this.stage.stageWidth - 118);
+			this._btnJump.set_y(btnY);
 		}
 	}
 	,__class__: Main
@@ -48562,7 +48799,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 218358;
+	this.version = 720039;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = "lime.utils.AssetCache";
@@ -98678,6 +98915,41 @@ openfl_ui_MouseCursor.toLimeCursor = function(this1) {
 		return lime_ui_MouseCursor.DEFAULT;
 	}
 };
+var openfl_ui_Multitouch = function() { };
+$hxClasses["openfl.ui.Multitouch"] = openfl_ui_Multitouch;
+openfl_ui_Multitouch.__name__ = "openfl.ui.Multitouch";
+openfl_ui_Multitouch.__properties__ = {get_supportsTouchEvents:"get_supportsTouchEvents"};
+openfl_ui_Multitouch.get_supportsTouchEvents = function() {
+	if(('ontouchstart' in document.documentElement) || (window.DocumentTouch && document instanceof DocumentTouch)) {
+		return true;
+	}
+	return false;
+};
+var openfl_ui_MultitouchInputMode = {};
+openfl_ui_MultitouchInputMode.fromString = function(value) {
+	switch(value) {
+	case "gesture":
+		return 0;
+	case "none":
+		return 1;
+	case "touchPoint":
+		return 2;
+	default:
+		return null;
+	}
+};
+openfl_ui_MultitouchInputMode.toString = function(this1) {
+	switch(this1) {
+	case 0:
+		return "gesture";
+	case 1:
+		return "none";
+	case 2:
+		return "touchPoint";
+	default:
+		return null;
+	}
+};
 var openfl_utils_AGALMiniAssembler = function(debugging) {
 	if(debugging == null) {
 		debugging = false;
@@ -103085,6 +103357,10 @@ if(console.log == null) {
 openfl_display_Loader.__registerDefaultLoaders();
 openfl_display__$internal_CanvasGraphics.hitTestCanvas = js_Browser.get_supported() ? window.document.createElement("canvas") : null;
 openfl_display__$internal_CanvasGraphics.hitTestContext = js_Browser.get_supported() ? openfl_display__$internal_CanvasGraphics.hitTestCanvas.getContext("2d") : null;
+openfl_ui_Multitouch.maxTouchPoints = 2;
+openfl_ui_Multitouch.supportedGestures = null;
+openfl_ui_Multitouch.supportsGestureEvents = false;
+openfl_ui_Multitouch.inputMode = 2;
 openfl_Vector.__meta__ = { statics : { toNullVector : { SuppressWarnings : ["checkstyle:Dynamic"]}}};
 openfl_display_DisplayObject.__meta__ = { fields : { __cairo : { SuppressWarnings : ["checkstyle:Dynamic"]}, addEventListener : { SuppressWarnings : ["checkstyle:Dynamic"]}, removeEventListener : { SuppressWarnings : ["checkstyle:Dynamic"]}}};
 openfl_display_DisplayObject.__broadcastEvents = new haxe_ds_StringMap();
@@ -105496,6 +105772,9 @@ openfl_ui_MouseCursor.__RESIZE_NWSE = "resize_nwse";
 openfl_ui_MouseCursor.__RESIZE_WE = "resize_we";
 openfl_ui_MouseCursor.__WAIT = "wait";
 openfl_ui_MouseCursor.__WAIT_ARROW = "waitarrow";
+openfl_ui_MultitouchInputMode.GESTURE = 0;
+openfl_ui_MultitouchInputMode.NONE = 1;
+openfl_ui_MultitouchInputMode.TOUCH_POINT = 2;
 openfl_utils_AGALMiniAssembler.__meta__ = { obj : { SuppressWarnings : [["checkstyle:ConstantName","checkstyle:FieldDocComment"]]}};
 openfl_utils_AGALMiniAssembler.OPMAP = new haxe_ds_StringMap();
 openfl_utils_AGALMiniAssembler.REGMAP = new haxe_ds_StringMap();

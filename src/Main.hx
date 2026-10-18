@@ -1,5 +1,6 @@
 package;
 
+import away3d.bounds.NullBounds;
 import away3d.containers.ObjectContainer3D;
 import away3d.containers.View3D;
 import away3d.core.base.Geometry;
@@ -43,6 +44,8 @@ import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import openfl.ui.Keyboard;
+import openfl.ui.Multitouch;
+import openfl.ui.MultitouchInputMode;
 import openfl.utils.ByteArray;
 import openfl.utils.Endian;
 import openfl.Vector;
@@ -183,6 +186,13 @@ class Main extends Sprite
 	private var _powerParticleVels:Array<Vector3D> = [];
 	private var _powerParticleLife:Array<Float> = [];
 
+	// Mobile On-Screen Touch Controls
+	private var _touchControlsLayer:Sprite;
+	private var _btnLeft:Sprite;
+	private var _btnRight:Sprite;
+	private var _btnJump:Sprite;
+	private var _activeTouches:Map<Int, String> = new Map<Int, String>();
+
 	public function new()
 	{
 		super();
@@ -262,7 +272,9 @@ class Main extends Sprite
 
 		// 6. Astronaut multi-materials
 		_astronautMaterial = createTextureMaterial("assets/textures/astronaut.jpg", 0xDFE5EB);
+		_astronautMaterial.bothSides = true;
 		_backpackMaterial = createTextureMaterial("assets/textures/equipment.png", 0x445566);
+		_backpackMaterial.bothSides = true;
 
 		// Authentic glowing transparent bubble space helmet with additive blending (Flare3D AS3: ONE, ONE)
 		_helmetMaterial = createTextureMaterial("assets/textures/glassy.png", 0x00A0FF);
@@ -632,14 +644,17 @@ class Main extends Sprite
 					}
 
 					_suitSubGeom = new SubGeometry();
-					_suitSubGeom.autoDeriveVertexNormals = false;
 					_suitSubGeom.updateUVData(suitUVs);
 					_suitSubGeom.updateIndexData(suitIndices);
 					_suitSubGeom.updateVertexData(_suitFrames[idleFrame]);
+					_suitSubGeom.autoDeriveVertexNormals = true;
+					var suitNormals = _suitSubGeom.vertexNormalData;
+					_suitSubGeom.updateVertexNormalData(suitNormals);
 
 					var suitGeom = new Geometry();
 					suitGeom.addSubGeometry(_suitSubGeom);
 					var suitMesh = new Mesh(suitGeom, _astronautMaterial);
+					suitMesh.bounds = new NullBounds(true);
 					_astronautMesh.addChild(suitMesh);
 
 					// Submesh 1: Backpack
@@ -666,14 +681,17 @@ class Main extends Sprite
 					}
 
 					_backpackSubGeom = new SubGeometry();
-					_backpackSubGeom.autoDeriveVertexNormals = false;
 					_backpackSubGeom.updateUVData(bpUVs);
 					_backpackSubGeom.updateIndexData(bpIndices);
 					_backpackSubGeom.updateVertexData(_backpackFrames[idleFrame]);
+					_backpackSubGeom.autoDeriveVertexNormals = true;
+					var bpNormals = _backpackSubGeom.vertexNormalData;
+					_backpackSubGeom.updateVertexNormalData(bpNormals);
 
 					var bpGeom = new Geometry();
 					bpGeom.addSubGeometry(_backpackSubGeom);
 					var bpMesh = new Mesh(bpGeom, _backpackMaterial);
+					bpMesh.bounds = new NullBounds(true);
 					_astronautMesh.addChild(bpMesh);
 
 					// Submesh 2: Helmet
@@ -700,14 +718,17 @@ class Main extends Sprite
 					}
 
 					_helmetSubGeom = new SubGeometry();
-					_helmetSubGeom.autoDeriveVertexNormals = false;
 					_helmetSubGeom.updateUVData(helmetUVs);
 					_helmetSubGeom.updateIndexData(helmetIndices);
 					_helmetSubGeom.updateVertexData(_helmetFrames[idleFrame]);
+					_helmetSubGeom.autoDeriveVertexNormals = true;
+					var helmetNormals = _helmetSubGeom.vertexNormalData;
+					_helmetSubGeom.updateVertexNormalData(helmetNormals);
 
 					var helmetGeom = new Geometry();
 					helmetGeom.addSubGeometry(_helmetSubGeom);
 					var helmetMesh = new Mesh(helmetGeom, _helmetMaterial);
+					helmetMesh.bounds = new NullBounds(true);
 					_astronautMesh.addChild(helmetMesh);
 
 					_hasAnimatedAstronaut = true;
@@ -730,11 +751,19 @@ class Main extends Sprite
 				mats.set("Material_#27", _backpackMaterial);
 				mats.set("head", _helmetMaterial);
 				var multiMesh = SimpleObjLoader.parseMulti(astroText, mats, _astronautMaterial);
+				for (i in 0...multiMesh.numChildren)
+				{
+					if (Std.isOfType(multiMesh.getChildAt(i), Mesh))
+					{
+						cast(multiMesh.getChildAt(i), Mesh).bounds = new NullBounds(true);
+					}
+				}
 				_astronautMesh.addChild(multiMesh);
 			}
 			else
 			{
 				var cube = new Mesh(new CubeGeometry(1.6, 3.2, 1.2), _astronautMaterial);
+				cube.bounds = new NullBounds(true);
 				cube.y = 1.6;
 				_astronautMesh.addChild(cube);
 			}
@@ -743,6 +772,8 @@ class Main extends Sprite
 		_astronautMesh.scale(4.5);
 		_astronautMesh.y = 0.0;
 		_groundContainer.addChild(_astronautMesh);
+		if (_shadowMesh != null) _shadowMesh.bounds = new NullBounds(true);
+		if (_jetpackFlame != null) _jetpackFlame.bounds = new NullBounds(true);
 	}
 
 	private function setAstronautFrame(frame:Int):Void
@@ -1134,16 +1165,21 @@ class Main extends Sprite
 		mg.lineTo(-160, mh * 0.5 - 12);
 		mg.endFill();
 
-		var startFormat = new TextFormat("_sans", 18, 0xFFB71E, true, null, null, null, null, TextFormatAlign.CENTER);
+		var startFormat = new TextFormat("_sans", 16, 0xFFB71E, true, null, null, null, null, TextFormatAlign.CENTER);
 		var tfStart = new TextField();
 		tfStart.defaultTextFormat = startFormat;
-		tfStart.text = "press spacebar to start";
+		tfStart.text = "TAP SCREEN OR PRESS SPACE";
 		tfStart.x = -150;
-		tfStart.y = mh * 0.5 + 2;
+		tfStart.y = mh * 0.5 + 3;
 		tfStart.width = 300;
 		tfStart.filters = [shadow];
 		tfStart.selectable = false;
 		_instructionsModal.addChild(tfStart);
+
+		_instructionsModal.buttonMode = true;
+		_instructionsModal.addEventListener(MouseEvent.CLICK, function(e:MouseEvent) {
+			handleActionTrigger();
+		});
 
 		// ==================== 4. GAME OVER SCORE BANNER ====================
 		_scoreModal = new Sprite();
@@ -1275,6 +1311,8 @@ class Main extends Sprite
 		});
 
 		_speedBanner.visible = false;
+
+		initTouchControls();
 	}
 
 	private function showStageClearBanner():Void
@@ -1351,13 +1389,165 @@ class Main extends Sprite
 		}
 	}
 
+	private function initTouchControls():Void
+	{
+		try
+		{
+			Multitouch.inputMode = MultitouchInputMode.TOUCH_POINT;
+		}
+		catch (e:Dynamic) {}
+
+		_touchControlsLayer = new Sprite();
+		addChild(_touchControlsLayer);
+
+		_btnLeft = new Sprite();
+		_btnLeft.mouseChildren = false;
+		_btnLeft.buttonMode = true;
+		drawTouchButton(_btnLeft, "◀", 76, 76, false, false);
+		_touchControlsLayer.addChild(_btnLeft);
+
+		_btnRight = new Sprite();
+		_btnRight.mouseChildren = false;
+		_btnRight.buttonMode = true;
+		drawTouchButton(_btnRight, "▶", 76, 76, false, false);
+		_touchControlsLayer.addChild(_btnRight);
+
+		_btnJump = new Sprite();
+		_btnJump.mouseChildren = false;
+		_btnJump.buttonMode = true;
+		drawTouchButton(_btnJump, "▲ JUMP", 100, 76, false, true);
+		_touchControlsLayer.addChild(_btnJump);
+
+		// Left button events
+		_btnLeft.addEventListener(MouseEvent.MOUSE_DOWN, function(e:MouseEvent) {
+			_leftPressed = true;
+			drawTouchButton(_btnLeft, "◀", 76, 76, true, false);
+		});
+		_btnLeft.addEventListener(MouseEvent.MOUSE_UP, function(e:MouseEvent) {
+			_leftPressed = false;
+			drawTouchButton(_btnLeft, "◀", 76, 76, false, false);
+		});
+		_btnLeft.addEventListener(MouseEvent.MOUSE_OUT, function(e:MouseEvent) {
+			_leftPressed = false;
+			drawTouchButton(_btnLeft, "◀", 76, 76, false, false);
+		});
+		_btnLeft.addEventListener(TouchEvent.TOUCH_BEGIN, function(e:TouchEvent) {
+			_activeTouches.set(e.touchPointID, "left");
+			_leftPressed = true;
+			drawTouchButton(_btnLeft, "◀", 76, 76, true, false);
+		});
+		_btnLeft.addEventListener(TouchEvent.TOUCH_END, function(e:TouchEvent) {
+			_activeTouches.remove(e.touchPointID);
+			checkActiveTouchSteering();
+			drawTouchButton(_btnLeft, "◀", 76, 76, false, false);
+		});
+		_btnLeft.addEventListener(TouchEvent.TOUCH_OUT, function(e:TouchEvent) {
+			_activeTouches.remove(e.touchPointID);
+			checkActiveTouchSteering();
+			drawTouchButton(_btnLeft, "◀", 76, 76, false, false);
+		});
+
+		// Right button events
+		_btnRight.addEventListener(MouseEvent.MOUSE_DOWN, function(e:MouseEvent) {
+			_rightPressed = true;
+			drawTouchButton(_btnRight, "▶", 76, 76, true, false);
+		});
+		_btnRight.addEventListener(MouseEvent.MOUSE_UP, function(e:MouseEvent) {
+			_rightPressed = false;
+			drawTouchButton(_btnRight, "▶", 76, 76, false, false);
+		});
+		_btnRight.addEventListener(MouseEvent.MOUSE_OUT, function(e:MouseEvent) {
+			_rightPressed = false;
+			drawTouchButton(_btnRight, "▶", 76, 76, false, false);
+		});
+		_btnRight.addEventListener(TouchEvent.TOUCH_BEGIN, function(e:TouchEvent) {
+			_activeTouches.set(e.touchPointID, "right");
+			_rightPressed = true;
+			drawTouchButton(_btnRight, "▶", 76, 76, true, false);
+		});
+		_btnRight.addEventListener(TouchEvent.TOUCH_END, function(e:TouchEvent) {
+			_activeTouches.remove(e.touchPointID);
+			checkActiveTouchSteering();
+			drawTouchButton(_btnRight, "▶", 76, 76, false, false);
+		});
+		_btnRight.addEventListener(TouchEvent.TOUCH_OUT, function(e:TouchEvent) {
+			_activeTouches.remove(e.touchPointID);
+			checkActiveTouchSteering();
+			drawTouchButton(_btnRight, "▶", 76, 76, false, false);
+		});
+
+		// Jump button events
+		_btnJump.addEventListener(MouseEvent.MOUSE_DOWN, function(e:MouseEvent) {
+			handleActionTrigger();
+			drawTouchButton(_btnJump, "▲ JUMP", 100, 76, true, true);
+		});
+		_btnJump.addEventListener(MouseEvent.MOUSE_UP, function(e:MouseEvent) {
+			drawTouchButton(_btnJump, "▲ JUMP", 100, 76, false, true);
+		});
+		_btnJump.addEventListener(MouseEvent.MOUSE_OUT, function(e:MouseEvent) {
+			drawTouchButton(_btnJump, "▲ JUMP", 100, 76, false, true);
+		});
+		_btnJump.addEventListener(TouchEvent.TOUCH_BEGIN, function(e:TouchEvent) {
+			handleActionTrigger();
+			drawTouchButton(_btnJump, "▲ JUMP", 100, 76, true, true);
+		});
+		_btnJump.addEventListener(TouchEvent.TOUCH_END, function(e:TouchEvent) {
+			drawTouchButton(_btnJump, "▲ JUMP", 100, 76, false, true);
+		});
+	}
+
+	private function checkActiveTouchSteering():Void
+	{
+		var hasLeft = false;
+		var hasRight = false;
+		for (id in _activeTouches.keys())
+		{
+			if (_activeTouches.get(id) == "left") hasLeft = true;
+			if (_activeTouches.get(id) == "right") hasRight = true;
+		}
+		_leftPressed = hasLeft;
+		_rightPressed = hasRight;
+	}
+
+	private function drawTouchButton(btn:Sprite, label:String, w:Float, h:Float, isPressed:Bool, isJump:Bool = false):Void
+	{
+		var g = btn.graphics;
+		g.clear();
+		var bgColor = isJump ? (isPressed ? 0x00FF88 : 0x0A3A2A) : (isPressed ? 0x00E5FF : 0x09264E);
+		var bgAlpha = isPressed ? 0.92 : 0.65;
+		var borderColor = isJump ? (isPressed ? 0xFFFFFF : 0x36FF00) : (isPressed ? 0xFFFFFF : 0x00E5FF);
+		var textColor = isPressed ? 0x000000 : (isJump ? 0x00FF88 : 0xFFFFFF);
+
+		g.lineStyle(3, borderColor, 0.95, true);
+		g.beginFill(bgColor, bgAlpha);
+		g.drawRoundRect(0, 0, w, h, 20, 20);
+		g.endFill();
+
+		var tf:TextField = cast btn.getChildByName("label");
+		if (tf == null)
+		{
+			tf = new TextField();
+			tf.name = "label";
+			tf.selectable = false;
+			tf.mouseEnabled = false;
+			btn.addChild(tf);
+		}
+		var tfFormat = new TextFormat("_sans", isJump ? 17 : 24, textColor, true, null, null, null, null, TextFormatAlign.CENTER);
+		tf.defaultTextFormat = tfFormat;
+		tf.text = label;
+		tf.width = w;
+		tf.y = isJump ? (h - 24) * 0.5 : (h - 32) * 0.5;
+	}
+
 	private function initEvents():Void
 	{
 		addEventListener(Event.ENTER_FRAME, onEnterFrame);
 		stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
 		stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
-		stage.addEventListener(MouseEvent.MOUSE_DOWN, onScreenTouch);
-		stage.addEventListener(TouchEvent.TOUCH_BEGIN, onScreenTouch);
+		stage.addEventListener(MouseEvent.MOUSE_DOWN, onStagePointerDown);
+		stage.addEventListener(MouseEvent.MOUSE_UP, onStagePointerUp);
+		stage.addEventListener(TouchEvent.TOUCH_BEGIN, onStagePointerDown);
+		stage.addEventListener(TouchEvent.TOUCH_END, onStagePointerUp);
 		stage.addEventListener(Event.RESIZE, onResize);
 		onResize();
 	}
@@ -1523,9 +1713,54 @@ class Main extends Sprite
 			_rightPressed = false;
 	}
 
-	private function onScreenTouch(e:Dynamic):Void
+	private function onStagePointerDown(e:Dynamic):Void
 	{
-		handleActionTrigger();
+		if (_sndMusic != null && _musicChannel == null)
+		{
+			playMusic();
+		}
+
+		if (_state == "start" || _state == "die" || _state == "stage_clear")
+		{
+			handleActionTrigger();
+			return;
+		}
+
+		var sx:Float = 0.0;
+		var sy:Float = 0.0;
+		var touchId:Int = 0;
+		if (Reflect.hasField(e, "stageX")) sx = Reflect.field(e, "stageX");
+		if (Reflect.hasField(e, "stageY")) sy = Reflect.field(e, "stageY");
+		if (Reflect.hasField(e, "touchPointID")) touchId = Reflect.field(e, "touchPointID");
+
+		// If tapped directly on bottom touch button area, let the button handlers process it
+		if (stage != null && sy > stage.stageHeight - 110)
+		{
+			return;
+		}
+
+		// Screen zone touch steering: touch left half to turn left, right half to turn right
+		if (stage != null)
+		{
+			if (sx < stage.stageWidth * 0.42)
+			{
+				_activeTouches.set(touchId, "left");
+				_leftPressed = true;
+			}
+			else if (sx > stage.stageWidth * 0.58)
+			{
+				_activeTouches.set(touchId, "right");
+				_rightPressed = true;
+			}
+		}
+	}
+
+	private function onStagePointerUp(e:Dynamic):Void
+	{
+		var touchId:Int = 0;
+		if (Reflect.hasField(e, "touchPointID")) touchId = Reflect.field(e, "touchPointID");
+		_activeTouches.remove(touchId);
+		checkActiveTouchSteering();
 	}
 
 	private function handleActionTrigger():Void
@@ -2028,30 +2263,67 @@ class Main extends Sprite
 		_view.width = stage.stageWidth;
 		_view.height = stage.stageHeight;
 
+		// Adapt FOV for portrait mobile screens so character and track stay comfortably in view
+		if (Std.isOfType(_view.camera.lens, away3d.cameras.lenses.PerspectiveLens))
+		{
+			var pLens = cast(_view.camera.lens, away3d.cameras.lenses.PerspectiveLens);
+			if (stage.stageWidth < stage.stageHeight)
+			{
+				var aspect = stage.stageWidth / stage.stageHeight;
+				pLens.fieldOfView = Math.min(80.0, 65.0 / Math.max(0.68, Math.pow(aspect, 0.5)));
+			}
+			else
+			{
+				pLens.fieldOfView = 65.0;
+			}
+		}
+
 		if (_energyPanel != null)
 		{
 			_energyPanel.x = stage.stageWidth - 175;
 			_energyPanel.y = 15;
 		}
 
+		var modalScale = Math.min(0.85, (stage.stageWidth - 16) / 460.0);
+
 		if (_instructionsModal != null)
 		{
 			_instructionsModal.x = stage.stageWidth * 0.5;
 			_instructionsModal.y = stage.stageHeight * 0.36;
-			_instructionsModal.scaleX = 0.85;
-			_instructionsModal.scaleY = 0.85;
+			_instructionsModal.scaleX = modalScale;
+			_instructionsModal.scaleY = modalScale;
 		}
 
 		if (_scoreModal != null)
 		{
 			_scoreModal.x = stage.stageWidth * 0.5;
 			_scoreModal.y = stage.stageHeight * 0.5;
+			var smScale = Math.min(1.0, (stage.stageWidth - 16) / 460.0);
+			_scoreModal.scaleX = smScale;
+			_scoreModal.scaleY = smScale;
 		}
 
 		if (_speedBanner != null)
 		{
 			_speedBanner.x = stage.stageWidth * 0.5;
 			_speedBanner.y = stage.stageHeight * 0.42;
+			var sbScale = Math.min(1.0, (stage.stageWidth - 16) / 460.0);
+			_speedBanner.scaleX = sbScale;
+			_speedBanner.scaleY = sbScale;
+		}
+
+		// Responsive positioning for on-screen touch controls
+		if (_btnLeft != null && _btnRight != null && _btnJump != null)
+		{
+			var btnY = stage.stageHeight - 96;
+			_btnLeft.x = 18;
+			_btnLeft.y = btnY;
+
+			_btnRight.x = 104;
+			_btnRight.y = btnY;
+
+			_btnJump.x = stage.stageWidth - 118;
+			_btnJump.y = btnY;
 		}
 	}
 }
