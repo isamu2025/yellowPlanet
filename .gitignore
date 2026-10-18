@@ -1,0 +1,19 @@
+# OpenFL / Lime intermediate build outputs
+obj/
+bin/
+Export/
+tmp_edge_profile/
+extracted_textures/
+.settings/
+.vscode/
+.idea/
+
+# Root temporary / debug screenshots
+*.png
+!assets/**/*.png
+!docs/favicon.png
+!docs/assets/**/*.png
+
+# System files
+Thumbs.db
+.DS_Store

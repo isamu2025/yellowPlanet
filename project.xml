@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	
+	<meta title="Yellow Planet 3D (Away3D)" package="com.flare3d.yellowplanet" version="1.0.0" company="OpenFL Away3D" />
+	<app main="Main" file="YellowPlanet" path="Export" />
+	
+	<window background="0x071D3E" fps="60" hardware="true" allow-high-dpi="true" />
+	<window width="1024" height="600" if="desktop" />
+	<window depth-buffer="true" stencil-buffer="true" antialiasing="2" />
+	<window orientation="landscape" resizable="true" />
+	
+	<source path="src" />
+	
+	<haxelib name="openfl" />
+	<haxelib name="away3d" />
+	
+	<assets path="assets/models" />
+	<assets path="assets/textures" />
+	<assets path="assets/audio" />
+	
+</project>
